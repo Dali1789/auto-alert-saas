@@ -17,7 +17,6 @@
     "@supabase/supabase-js": "^2.39.0",
     "resend": "^2.1.0",
     "axios": "^1.6.2",
-    "crypto": "^1.0.1",
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1"
   },

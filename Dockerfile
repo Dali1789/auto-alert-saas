@@ -1,34 +1,33 @@
-# Use Node.js 18 Alpine for smaller image size
+# Railway-optimized Dockerfile for auto-alert-saas
 FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy notification service package files
 COPY railway/notification-service/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install production dependencies only
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy application code
+# Copy application source code
 COPY railway/notification-service/ .
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 -G nodejs
 
-# Change ownership of app directory
-RUN chown -R nextjs:nodejs /app
+# Change ownership to non-root user
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
-# Switch to non-root user
-USER nextjs
+# Use Railway's dynamic port assignment
+ENV PORT=${PORT:-3001}
+EXPOSE ${PORT}
 
-# Expose port (Railway will use $PORT environment variable)
-EXPOSE 3001
+# Railway-compatible health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3001) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
-
-# Start the application
+# Start the notification service
 CMD ["npm", "start"]

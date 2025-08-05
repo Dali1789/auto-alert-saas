@@ -13,7 +13,6 @@
     "deploy:backend": "railway deploy"
   },
   "workspaces": [
-    "frontend",
     "railway/notification-service"
   ],
   "keywords": [
