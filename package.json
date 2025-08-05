@@ -1,0 +1,38 @@
+{
+  "name": "auto-alert-saas",
+  "version": "1.0.0",
+  "description": "Automatische Fahrzeugüberwachung mit Voice-Benachrichtigungen",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "start": "npm run start --workspace=frontend",
+    "backend:dev": "npm run dev --workspace=backend",
+    "backend:start": "npm run start --workspace=backend",
+    "deploy:frontend": "vercel --prod",
+    "deploy:backend": "railway deploy"
+  },
+  "workspaces": [
+    "frontend",
+    "railway/notification-service"
+  ],
+  "keywords": [
+    "auto-alert",
+    "car-monitoring",
+    "voice-notifications",
+    "mobile.de",
+    "autoscout24",
+    "retell-ai",
+    "saas"
+  ],
+  "author": "Dali1789",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dali1789/auto-alert-saas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Dali1789/auto-alert-saas/issues"
+  },
+  "homepage": "https://github.com/Dali1789/auto-alert-saas#readme"
+}
