@@ -1,0 +1,40 @@
+{
+  "name": "auto-alert-notification-service",
+  "version": "1.0.0",
+  "description": "Notification service with Retell AI voice calls and Resend emails",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "dotenv": "^16.3.1",
+    "@supabase/supabase-js": "^2.39.0",
+    "resend": "^2.1.0",
+    "axios": "^1.6.2",
+    "crypto": "^1.0.1",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "notification",
+    "voice-calls",
+    "retell-ai",
+    "auto-alert",
+    "railway"
+  ],
+  "author": "Dali1789",
+  "license": "MIT"
+}
