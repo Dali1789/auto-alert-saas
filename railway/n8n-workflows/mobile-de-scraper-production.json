@@ -1,0 +1,310 @@
+{
+  "name": "Mobile.de Car Scraper - Production",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "*/60 * * * * *"
+            }
+          ]
+        }
+      },
+      "name": "Every 60 Seconds",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "id": "cron-trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://kong-production-9e43.up.railway.app",
+        "options": {
+          "headers": {
+            "headers": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "apikey", 
+                "value": "{{ $env.SUPABASE_SERVICE_ROLE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        "method": "POST",
+        "body": {
+          "query": "SELECT s.*, u.email, u.notification_preferences FROM auto_alert_searches s JOIN auto_alert_user_profiles u ON s.user_id = u.id WHERE s.active = true"
+        }
+      },
+      "name": "Get Active Searches",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "id": "get-searches"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build Mobile.de API URLs for each search\nconst searches = $input.all();\nconst apiRequests = [];\n\n// Mobile.de Make IDs\nconst makeIds = {\n  'BMW': '3500',\n  'Mercedes': '17200',\n  'Audi': '1900', \n  'Volkswagen': '25200',\n  'Porsche': '20000',\n  'Opel': '18700',\n  'Ford': '9000'\n};\n\nfor (const search of searches) {\n  const s = search.json;\n  \n  // Build Mobile.de API URL\n  const params = new URLSearchParams();\n  \n  // Basic parameters\n  params.set('country', 'DE');\n  params.set('page.size', '50');\n  params.set('sort.field', 'creationTime');\n  params.set('sort.order', 'DESCENDING');\n  \n  // Make/Model Classification\n  if (s.make && makeIds[s.make]) {\n    let classification = `refdata/classes/Car/makes/${s.make.toUpperCase()}`;\n    if (s.model) {\n      classification += `/models/${s.model.toUpperCase()}`;\n    }\n    params.set('classification', classification);\n  }\n  \n  // Category (Limousine, Cabrio, etc.)\n  if (s.category) {\n    params.set('category', s.category);\n  }\n  \n  // Price range\n  if (s.price_min) params.set('price.min', s.price_min.toString());\n  if (s.price_max) params.set('price.max', s.price_max.toString());\n  \n  // Year range\n  if (s.year_min) params.set('firstRegistrationDate.min', `${s.year_min}-01`);\n  if (s.year_max) params.set('firstRegistrationDate.max', `${s.year_max}-12`);\n  \n  // Mileage\n  if (s.mileage_max) params.set('mileage.max', s.mileage_max.toString());\n  \n  // Power (kW)\n  if (s.power_min) params.set('power.min', s.power_min.toString());\n  if (s.power_max) params.set('power.max', s.power_max.toString());\n  \n  // Fuel type\n  if (s.fuel) params.set('fuel', s.fuel);\n  \n  // Gearbox\n  if (s.gearbox) params.set('gearbox', s.gearbox);\n  \n  // Condition\n  if (s.condition) params.set('condition', s.condition);\n  \n  // Seller type\n  if (s.seller_type) params.set('sellerType', s.seller_type);\n  \n  // Damage filter\n  if (s.damage_allowed !== undefined) {\n    params.set('damageUnrepaired', s.damage_allowed ? '1' : '0');\n  }\n  \n  // Regional search\n  if (s.zipcode) {\n    params.set('ambit.zipcode', s.zipcode);\n    if (s.radius) params.set('ambit.radius', s.radius.toString());\n  }\n  \n  // Features\n  if (s.features && s.features.length > 0) {\n    params.set('feature', s.features.join(','));\n  }\n  \n  // Model description (e.g., \"740d\")\n  if (s.model_description) {\n    params.set('modelDescription', s.model_description);\n  }\n  \n  // Exclude export vehicles\n  if (s.exclude_export) {\n    params.set('excludeFeature', 'EXPORT');\n  }\n  \n  // Only with images\n  if (s.only_with_images) {\n    params.set('imageCount.min', '1');\n  }\n  \n  const apiUrl = `https://services.mobile.de/search-api/search?${params.toString()}`;\n  \n  apiRequests.push({\n    json: {\n      searchId: s.id,\n      searchName: s.name,\n      userId: s.user_id,\n      userEmail: s.email,\n      notificationPrefs: s.notification_preferences,\n      apiUrl: apiUrl,\n      searchParams: s\n    }\n  });\n}\n\nconsole.log(`Built ${apiRequests.length} Mobile.de API requests`);\nreturn apiRequests;"
+      },
+      "name": "Build Mobile.de URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "id": "build-urls"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiUrl }}",
+        "options": {
+          "headers": {
+            "headers": [
+              {
+                "name": "User-Agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+              },
+              {
+                "name": "Accept",
+                "value": "application/json"
+              },
+              {
+                "name": "Accept-Language",
+                "value": "de-DE,de;q=0.9,en;q=0.8"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache"
+              }
+            ]
+          },
+          "timeout": 30000
+        }
+      },
+      "name": "Mobile.de API Call",
+      "type": "n8n-nodes-base.httpRequest", 
+      "typeVersion": 4,
+      "position": [900, 300],
+      "id": "api-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Mobile.de API response and filter new vehicles\nconst searchData = $json;\nconst apiResponse = searchData.body || $json;\nconst currentTime = new Date();\nconst fiveMinutesAgo = new Date(currentTime.getTime() - 5 * 60 * 1000);\n\n// Check if API response is valid\nif (!apiResponse.ads || !Array.isArray(apiResponse.ads)) {\n  console.log(`No ads found for search: ${searchData.searchName}`);\n  return [];\n}\n\nconst newVehicles = [];\n\nfor (const ad of apiResponse.ads) {\n  const creationDate = new Date(ad.creationDate);\n  \n  // Only process vehicles created in the last 5 minutes\n  if (creationDate > fiveMinutesAgo) {\n    const vehicle = {\n      // Search metadata\n      searchId: searchData.searchId,\n      searchName: searchData.searchName,\n      userId: searchData.userId,\n      userEmail: searchData.userEmail,\n      notificationPrefs: searchData.notificationPrefs,\n      \n      // Mobile.de data\n      mobileAdId: ad.mobileAdId,\n      portal: 'mobile.de',\n      \n      // Vehicle basics\n      title: `${ad.make} ${ad.model} ${ad.modelDescription || ''}`.trim(),\n      make: ad.make,\n      model: ad.model,\n      modelDescription: ad.modelDescription,\n      \n      // Pricing\n      price: parseFloat(ad.price?.consumerPriceGross) || 0,\n      currency: ad.price?.currency || 'EUR',\n      priceType: ad.price?.type,\n      \n      // Technical specs\n      year: ad.firstRegistration ? parseInt(ad.firstRegistration.substring(0, 4)) : null,\n      month: ad.firstRegistration ? parseInt(ad.firstRegistration.substring(4, 6)) : null,\n      mileage: ad.mileage || 0,\n      fuel: ad.fuel,\n      gearbox: ad.gearbox,\n      power: ad.power, // kW\n      powerHP: ad.power ? Math.round(ad.power * 1.36) : null,\n      \n      // Condition\n      condition: ad.condition,\n      damageUnrepaired: ad.damageUnrepaired || false,\n      accidentDamaged: ad.accidentDamaged || false,\n      roadworthy: ad.roadworthy,\n      \n      // Vehicle details\n      category: ad.category,\n      doors: ad.doorCount,\n      seats: ad.numSeats,\n      exteriorColor: ad.exteriorColor,\n      interiorColor: ad.interiorColor,\n      \n      // Seller info\n      sellerType: ad.seller?.type,\n      sellerCity: ad.seller?.address?.city,\n      sellerZipcode: ad.seller?.address?.zipcode,\n      sellerCompany: ad.seller?.companyName,\n      sellerCommercial: ad.seller?.commercial,\n      \n      // URLs and dates\n      detailUrl: ad.detailPageUrl,\n      creationDate: ad.creationDate,\n      modificationDate: ad.modificationDate,\n      \n      // Additional\n      features: ad.features || [],\n      images: ad.images || [],\n      description: ad.plainTextDescription,\n      \n      // Metadata\n      foundAt: currentTime.toISOString(),\n      location: `${ad.seller?.address?.city || 'Unbekannt'}, ${ad.seller?.address?.zipcode || ''}`\n    };\n    \n    newVehicles.push({ json: vehicle });\n  }\n}\n\nconsole.log(`Search \"${searchData.searchName}\": Found ${newVehicles.length} new vehicles`);\nreturn newVehicles;"
+      },
+      "name": "Filter New Vehicles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300],
+      "id": "filter-new"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "operation": "lengthLargerThan",
+            "rightValue": 0
+          }
+        }
+      },
+      "name": "Has New Vehicles?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "id": "has-new"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Group vehicles by search for batch webhook calls\nconst vehicles = $input.all();\nconst groupedBySearch = {};\n\nfor (const vehicle of vehicles) {\n  const v = vehicle.json;\n  const searchId = v.searchId;\n  \n  if (!groupedBySearch[searchId]) {\n    groupedBySearch[searchId] = {\n      searchId: searchId,\n      searchName: v.searchName,\n      userId: v.userId,\n      userEmail: v.userEmail,\n      notificationPrefs: v.notificationPrefs,\n      vehicles: []\n    };\n  }\n  \n  groupedBySearch[searchId].vehicles.push(v);\n}\n\nconst webhookCalls = [];\nfor (const [searchId, data] of Object.entries(groupedBySearch)) {\n  webhookCalls.push({\n    json: {\n      searchId: data.searchId,\n      searchName: data.searchName,\n      userId: data.userId,\n      userEmail: data.userEmail,\n      notificationPrefs: data.notificationPrefs,\n      newVehicles: data.vehicles,\n      vehicleCount: data.vehicles.length\n    }\n  });\n}\n\nconsole.log(`Sending ${webhookCalls.length} webhook calls for ${vehicles.length} total vehicles`);\nreturn webhookCalls;"
+      },
+      "name": "Group for Webhook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 200],
+      "id": "group-webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://auto-alert-notifications.railway.app/api/webhooks/n8n",
+        "options": {
+          "headers": {
+            "headers": [
+              {
+                "name": "webhook_secret",
+                "value": "{{ $env.WEBHOOK_SECRET }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        },
+        "method": "POST",
+        "body": {
+          "searchId": "={{ $json.searchId }}",
+          "searchName": "={{ $json.searchName }}",
+          "userId": "={{ $json.userId }}",
+          "userEmail": "={{ $json.userEmail }}",
+          "newVehicles": "={{ $json.newVehicles }}"
+        }
+      },
+      "name": "Send to Notification Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1780, 200],
+      "id": "webhook-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log activity for monitoring\nconst items = $input.all();\nconst timestamp = new Date().toLocaleString('de-DE');\n\nconsole.log(`=== Mobile.de Scraper Run: ${timestamp} ===`);\nconsole.log(`Active searches processed: ${items.length}`);\n\nlet totalVehicles = 0;\nlet totalNewVehicles = 0;\n\nfor (const item of items) {\n  if (item.json.vehicleCount) {\n    totalNewVehicles += item.json.vehicleCount;\n    console.log(`${item.json.searchName}: ${item.json.vehicleCount} new vehicles`);\n  }\n}\n\nconsole.log(`Total new vehicles found: ${totalNewVehicles}`);\nconsole.log(`Webhook calls sent: ${items.length}`);\nconsole.log(`=== End Run ===`);\n\nreturn [{ \n  json: { \n    timestamp,\n    activeSearches: items.length,\n    newVehiclesFound: totalNewVehicles,\n    webhooksSent: items.length,\n    status: 'completed'\n  } \n}];"
+      },
+      "name": "Log Activity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 200],
+      "id": "log-activity"
+    },
+    {
+      "parameters": {
+        "jsCode": "// No new vehicles found - log for monitoring\nconst timestamp = new Date().toLocaleString('de-DE');\nconsole.log(`=== Mobile.de Scraper Run: ${timestamp} ===`);\nconsole.log(`Status: No new vehicles found`);\nconsole.log(`=== End Run ===`);\n\nreturn [{\n  json: {\n    timestamp,\n    status: 'no_new_vehicles',\n    message: 'Monitoring running normally'\n  }\n}];"
+      },
+      "name": "Log No Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400],
+      "id": "log-no-results"
+    }
+  ],
+  "connections": {
+    "Every 60 Seconds": {
+      "main": [
+        [
+          {
+            "node": "Get Active Searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Searches": {
+      "main": [
+        [
+          {
+            "node": "Build Mobile.de URLs",
+            "type": "main", 
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Mobile.de URLs": {
+      "main": [
+        [
+          {
+            "node": "Mobile.de API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mobile.de API Call": {
+      "main": [
+        [
+          {
+            "node": "Filter New Vehicles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Vehicles": {
+      "main": [
+        [
+          {
+            "node": "Has New Vehicles?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has New Vehicles?": {
+      "main": [
+        [
+          {
+            "node": "Group for Webhook",
+            "type": "main", 
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log No Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group for Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send to Notification Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Notification Service": {
+      "main": [
+        [
+          {
+            "node": "Log Activity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {},
+  "tags": [
+    {
+      "createdAt": "2025-08-05T13:45:00.000Z",
+      "updatedAt": "2025-08-05T13:45:00.000Z",
+      "id": "1",
+      "name": "auto-alert"
+    },
+    {
+      "createdAt": "2025-08-05T13:45:00.000Z", 
+      "updatedAt": "2025-08-05T13:45:00.000Z",
+      "id": "2",
+      "name": "mobile-de"
+    },
+    {
+      "createdAt": "2025-08-05T13:45:00.000Z",
+      "updatedAt": "2025-08-05T13:45:00.000Z", 
+      "id": "3",
+      "name": "scraper"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-08-05T13:45:00.000Z",
+  "versionId": "1"
+}
