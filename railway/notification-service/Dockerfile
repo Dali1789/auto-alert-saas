@@ -4,14 +4,14 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy notification service package files
-COPY railway/notification-service/package*.json ./
+# Copy package files
+COPY package*.json ./
 
 # Install production dependencies only
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy application source code
-COPY railway/notification-service/ .
+# Copy application source code  
+COPY . .
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

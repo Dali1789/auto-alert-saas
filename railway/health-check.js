@@ -113,10 +113,12 @@ async function testRetellAI() {
   }
   
   try {
+    const fetch = require('node-fetch');
     const response = await fetch('https://api.retellai.com/list-voices', {
       headers: {
         'Authorization': `Bearer ${process.env.RETELL_API_KEY}`
-      }
+      },
+      timeout: 10000
     });
     
     if (response.ok) {
@@ -141,10 +143,12 @@ async function testResend() {
   }
   
   try {
+    const fetch = require('node-fetch');
     const response = await fetch('https://api.resend.com/domains', {
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
-      }
+      },
+      timeout: 10000
     });
     
     if (response.ok) {

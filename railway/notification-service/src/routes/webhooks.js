@@ -1,5 +1,5 @@
 const express = require('express');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const NotificationService = require('../services/NotificationService');
 
 const router = express.Router();

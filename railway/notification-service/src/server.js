@@ -10,6 +10,15 @@ const webhookRoutes = require('./routes/webhooks');
 const healthRoutes = require('./routes/health');
 
 const app = express();
+// Environment validation
+const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`❌ Missing required environment variable: ${envVar}`);
+    console.log('Available env vars:', Object.keys(process.env).filter(k => k.includes('SUPABASE')));
+  }
+}
+
 const PORT = process.env.PORT || 3001;
 
 // Security middleware
@@ -74,6 +83,17 @@ app.use('*', (req, res) => {
     error: 'Not Found',
     message: `Route ${req.originalUrl} not found`
   });
+});
+
+// Global error handlers
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection:', reason);
+  process.exit(1);
 });
 
 // Start server
