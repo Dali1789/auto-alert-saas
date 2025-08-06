@@ -1,40 +1,43 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// Import configuration and middleware
+const config = require('./config/environment');
+const { securityHeaders, additionalSecurity, csrfProtection } = require('./middleware/security');
+const { globalLimiter, webhookLimiter, notificationLimiter, healthLimiter } = require('./middleware/rateLimiting');
+
+// Import routes
 const notificationRoutes = require('./routes/notifications');
 const webhookRoutes = require('./routes/webhooks');
 const healthRoutes = require('./routes/health');
 
 const app = express();
-// Environment validation
-const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    console.error(`❌ Missing required environment variable: ${envVar}`);
-    console.log('Available env vars:', Object.keys(process.env).filter(k => k.includes('SUPABASE')));
-  }
-}
+const appConfig = config.getConfig();
+const PORT = appConfig.server.port;
 
-const PORT = process.env.PORT || 3001;
+// Security middleware (order matters!)
+app.use(securityHeaders);
+app.use(additionalSecurity);
 
-// Security middleware
-app.use(helmet());
+// CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: [
+    appConfig.server.frontendUrl,
+    'https://auto-alert.vercel.app',
+    'http://localhost:3000' // Development
+  ].filter(Boolean),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Webhook-Signature']
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
+// Global rate limiting
+app.use(globalLimiter);
+
+// CSRF protection for state-changing operations
+app.use(csrfProtection);
 
 // Logging
 app.use(morgan('combined'));
@@ -43,10 +46,10 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/health', healthRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/webhooks', webhookRoutes);
+// Routes with specific rate limiting
+app.use('/health', healthLimiter, healthRoutes);
+app.use('/api/notifications', notificationLimiter, notificationRoutes);
+app.use('/api/webhooks', webhookLimiter, webhookRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -70,10 +73,26 @@ app.get('/', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  // Log error securely (don't log sensitive data)
+  const errorId = require('crypto').randomBytes(8).toString('hex');
+  console.error(`Error ${errorId}:`, {
+    message: err.message,
+    stack: appConfig.server.nodeEnv === 'development' ? err.stack : undefined,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('User-Agent')
+  });
+  
+  // Send sanitized error response
+  const statusCode = err.statusCode || err.status || 500;
+  res.status(statusCode).json({
+    error: statusCode === 500 ? 'Internal Server Error' : err.message,
+    errorId: errorId,
+    ...(appConfig.server.nodeEnv === 'development' && {
+      details: err.message,
+      stack: err.stack
+    })
   });
 });
 
@@ -96,13 +115,32 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+// Graceful shutdown handlers
+process.on('SIGTERM', () => {
+  console.log('📱 SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('📱 SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Auto-Alert Notification Service running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📞 Retell AI: ${process.env.RETELL_API_KEY ? '✅ Connected' : '❌ Not configured'}`);
-  console.log(`📧 Resend: ${process.env.RESEND_API_KEY ? '✅ Connected' : '❌ Not configured'}`);
-  console.log(`🗄️ Supabase: ${process.env.SUPABASE_URL ? '✅ Connected' : '❌ Not configured'}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log('🚀 Auto-Alert Notification Service Started');
+  console.log('=' .repeat(50));
+  // Configuration is already logged by environment config
+  console.log('=' .repeat(50));
+  console.log(`📡 Server listening on http://0.0.0.0:${PORT}`);
+  console.log('🔒 Security features enabled');
+  console.log('⚡ Ready to accept requests');
 });
 
 module.exports = app;

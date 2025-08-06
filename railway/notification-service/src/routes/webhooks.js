@@ -1,6 +1,42 @@
 const express = require('express');
-const crypto = require('node:crypto');
+const crypto = require('crypto');
+const { body, validationResult } = require('express-validator');
 const NotificationService = require('../services/NotificationService');
+
+// Security utilities
+function verifyWebhookSignature(payload, signature, secret) {
+  if (!signature) {
+    throw new Error('Missing webhook signature');
+  }
+  
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload, 'utf8')
+    .digest('hex');
+  
+  const providedSignature = signature.replace('sha256=', '');
+  
+  if (!crypto.timingSafeEqual(
+    Buffer.from(expectedSignature, 'hex'),
+    Buffer.from(providedSignature, 'hex')
+  )) {
+    throw new Error('Invalid webhook signature');
+  }
+}
+
+// Test environment middleware
+function requireTestMode(req, res, next) {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not Found' });
+  }
+  
+  const apiKey = req.get('X-API-Key');
+  if (!apiKey || apiKey !== process.env.TEST_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized - Test API key required' });
+  }
+  
+  next();
+}
 
 const router = express.Router();
 const notificationService = new NotificationService();
@@ -9,12 +45,33 @@ const notificationService = new NotificationService();
  * Webhook für n8n Scraping Results
  * POST /api/webhooks/n8n
  */
-router.post('/n8n', async (req, res) => {
+router.post('/n8n', [
+  body('searchId').isUUID().withMessage('Valid search ID required'),
+  body('newVehicles').isArray({ min: 1, max: 100 }).withMessage('Vehicles array required (1-100 items)'),
+  body('newVehicles.*.mobileAdId').isString().isLength({ min: 1, max: 50 }).trim(),
+  body('newVehicles.*.title').optional().isString().isLength({ max: 200 }).trim(),
+  body('newVehicles.*.price').optional().isInt({ min: 0, max: 10000000 }),
+  body('newVehicles.*.year').optional().isInt({ min: 1900, max: new Date().getFullYear() + 1 }),
+  body('newVehicles.*.detailUrl').optional().isURL({ protocols: ['https'] })
+], async (req, res) => {
   try {
-    const { webhook_secret } = req.headers;
+    // Validate request body
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    // Verify webhook signature
+    const signature = req.get('X-Webhook-Signature') || req.get('webhook_signature');
+    const payload = JSON.stringify(req.body);
     
-    // Verify webhook secret
-    if (webhook_secret !== process.env.WEBHOOK_SECRET) {
+    try {
+      verifyWebhookSignature(payload, signature, process.env.WEBHOOK_SECRET);
+    } catch (sigError) {
+      console.error('Webhook verification failed:', sigError.message);
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -152,8 +209,19 @@ router.post('/n8n', async (req, res) => {
  * Retell AI Call Status Webhook
  * POST /api/webhooks/retell/call-status
  */
-router.post('/retell/call-status', async (req, res) => {
+router.post('/retell/call-status', [
+  body('call_id').isString().isLength({ min: 1, max: 100 }).withMessage('Valid call ID required'),
+  body('call_status').isIn(['in_progress', 'ended', 'failed']).withMessage('Invalid call status')
+], async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
     const { call_id, call_status, end_reason } = req.body;
 
     console.log(`📞 Retell Call Update: ${call_id} -> ${call_status}`);
@@ -176,10 +244,20 @@ router.post('/retell/call-status', async (req, res) => {
 });
 
 /**
- * Test webhook endpoint
+ * Test webhook endpoint (Development/Testing only)
  * POST /api/webhooks/test
  */
-router.post('/test', async (req, res) => {
+router.post('/test', requireTestMode, [
+  body('testEmail').optional().isEmail().withMessage('Valid email required'),
+  body('testPhone').optional().isMobilePhone('de-DE').withMessage('Valid German phone number required')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ 
+      error: 'Validation failed',
+      details: errors.array()
+    });
+  }
   try {
     console.log('🧪 Test webhook received:', req.body);
 
@@ -233,32 +311,21 @@ router.post('/test', async (req, res) => {
 });
 
 /**
- * Webhook endpoint info
+ * Webhook endpoint info (Test mode only)
  * GET /api/webhooks/info
  */
-router.get('/info', (req, res) => {
+router.get('/info', requireTestMode, (req, res) => {
   res.json({
     service: 'Auto-Alert Webhook Service',
+    status: 'Test mode active',
     endpoints: {
-      'POST /api/webhooks/n8n': 'Receive new vehicle data from n8n scraper',
-      'POST /api/webhooks/retell/call-status': 'Receive call status updates from Retell AI',
-      'POST /api/webhooks/test': 'Test webhook functionality'
+      'POST /api/webhooks/n8n': 'Receive new vehicle data (requires signature)',
+      'POST /api/webhooks/retell/call-status': 'Receive call status updates',
+      'POST /api/webhooks/test': 'Test webhook functionality (test mode only)'
     },
-    headers: {
-      'webhook_secret': 'Required for n8n webhook'
-    },
-    example_payload: {
-      searchId: 'uuid-of-search',
-      newVehicles: [
-        {
-          mobileAdId: '12345',
-          title: 'BMW 740d xDrive',
-          price: 22500,
-          year: 2018,
-          mileage: 89000,
-          detailUrl: 'https://suchen.mobile.de/...'
-        }
-      ]
+    security: {
+      signatureRequired: true,
+      testModeOnly: true
     }
   });
 });
