@@ -12,10 +12,25 @@ class EnvironmentConfig {
     
     // Required environment variables
     const required = [
-      'SUPABASE_URL',
-      'SUPABASE_SERVICE_ROLE_KEY',
       'WEBHOOK_SECRET'
     ];
+
+    // Database connection (either Supabase or PostgreSQL)
+    const databaseRequired = [
+      'DATABASE_URL', // PostgreSQL for Railway
+      'POSTGRES_URL'  // Alternative PostgreSQL URL
+    ];
+
+    const hasDatabase = databaseRequired.some(env => process.env[env]);
+    const hasSupabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!hasDatabase && !hasSupabase) {
+      console.error('❌ No database configuration found!');
+      console.error('Required: Either DATABASE_URL/POSTGRES_URL or SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
+      if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+      }
+    }
 
     // Optional but recommended
     const recommended = [
@@ -113,8 +128,13 @@ class EnvironmentConfig {
         frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
       },
       database: {
+        // PostgreSQL (Railway)
+        databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+        // Supabase (fallback)
         supabaseUrl: process.env.SUPABASE_URL,
-        supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY
+        supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        // Redis
+        redisUrl: process.env.REDIS_URL
       },
       services: {
         retell: {
@@ -148,7 +168,8 @@ class EnvironmentConfig {
     console.log(`   Environment: ${this.config.server.nodeEnv}`);
     console.log(`   Port: ${this.config.server.port}`);
     console.log(`   Frontend URL: ${this.config.server.frontendUrl}`);
-    console.log(`   Supabase: ${this.config.database.supabaseUrl ? '✅ Connected' : '❌ Not configured'}`);
+    console.log(`   Database: ${this.config.database.databaseUrl || this.config.database.supabaseUrl ? '✅ Connected' : '❌ Not configured'}`);
+    console.log(`   Redis: ${this.config.database.redisUrl ? '✅ Connected' : '❌ Not configured'}`);
     console.log(`   Voice Calls: ${this.config.features.enableVoiceCalls ? '✅ Enabled' : '❌ Disabled'}`);
     console.log(`   Email: ${this.config.features.enableEmails ? '✅ Enabled' : '❌ Disabled'}`);
     console.log(`   Test Endpoints: ${this.config.features.enableTestEndpoints ? '✅ Enabled' : '❌ Disabled'}`);

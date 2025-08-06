@@ -1,0 +1,78 @@
+{
+  "name": "Auto-Alert SaaS - Complete Infrastructure",
+  "description": "Complete isolated infrastructure for Auto-Alert SaaS with PostgreSQL, Redis, and Backend API",
+  "services": [
+    {
+      "name": "postgresql",
+      "type": "database",
+      "image": "postgres:15-alpine",
+      "variables": {
+        "POSTGRES_DB": "autoalert",
+        "POSTGRES_USER": "autoalert_user", 
+        "POSTGRES_PASSWORD": "{{random_string_32}}"
+      },
+      "volumes": [
+        {
+          "mountPath": "/var/lib/postgresql/data",
+          "size": "5GB"
+        }
+      ],
+      "healthCheck": {
+        "command": "pg_isready -U autoalert_user -d autoalert",
+        "interval": "30s",
+        "timeout": "10s",
+        "retries": 3
+      }
+    },
+    {
+      "name": "redis",
+      "type": "cache",
+      "image": "redis:7-alpine",
+      "variables": {
+        "REDIS_PASSWORD": "{{random_string_32}}"
+      },
+      "volumes": [
+        {
+          "mountPath": "/data",
+          "size": "1GB"
+        }
+      ],
+      "healthCheck": {
+        "command": "redis-cli --no-auth-warning ping",
+        "interval": "30s",
+        "timeout": "10s", 
+        "retries": 3
+      }
+    },
+    {
+      "name": "auto-alert-backend",
+      "type": "web",
+      "source": {
+        "type": "github",
+        "repo": "Dali1789/auto-alert-saas",
+        "branch": "main"
+      },
+      "buildCommand": "npm install",
+      "startCommand": "npm start",
+      "port": 3001,
+      "variables": {
+        "NODE_ENV": "production",
+        "PORT": "3001",
+        "DATABASE_URL": "postgresql://autoalert_user:{{postgresql.POSTGRES_PASSWORD}}@{{postgresql.RAILWAY_PRIVATE_DOMAIN}}:5432/autoalert",
+        "REDIS_URL": "redis://:{{redis.REDIS_PASSWORD}}@{{redis.RAILWAY_PRIVATE_DOMAIN}}:6379",
+        "WEBHOOK_SECRET": "{{random_string_32}}",
+        "FRONTEND_URL": "https://auto-alert.vercel.app"
+      },
+      "domains": [
+        {
+          "domain": "auto-alert-api.up.railway.app"
+        }
+      ],
+      "dependsOn": ["postgresql", "redis"]
+    }
+  ],
+  "variables": {
+    "PROJECT_NAME": "Auto-Alert SaaS",
+    "ENVIRONMENT": "production"
+  }
+}

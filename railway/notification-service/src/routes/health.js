@@ -1,5 +1,5 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
+const DatabaseService = require('../services/DatabaseService');
 
 const router = express.Router();
 
@@ -32,29 +32,24 @@ router.get('/detailed', async (req, res) => {
     services: {}
   };
 
-  // Check Supabase connection
+  // Check Database connection (PostgreSQL/Supabase)
   try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-    
-    const { data, error } = await supabase
-      .from('auto_alert_user_profiles')
-      .select('count')
-      .limit(1);
-
-    health.services.supabase = {
-      status: error ? 'unhealthy' : 'healthy',
-      error: error?.message,
-      connected: !error
-    };
+    const dbHealth = await DatabaseService.healthCheck();
+    health.services.database = dbHealth;
   } catch (error) {
-    health.services.supabase = {
+    health.services.database = {
       status: 'unhealthy',
       error: error.message,
       connected: false
     };
+  }
+
+  // Get database statistics
+  try {
+    const stats = await DatabaseService.getStats();
+    health.database_stats = stats;
+  } catch (error) {
+    health.database_stats = { error: error.message };
   }
 
   // Check Retell AI configuration

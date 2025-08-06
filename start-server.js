@@ -26,11 +26,8 @@ if (fs.existsSync(serverPath)) {
     process.env.NODE_PATH = path.join(__dirname, 'node_modules');
     require('module')._initPaths();
     
-    // Change to the service directory for relative imports
-    process.chdir(path.join(__dirname, 'railway', 'notification-service'));
-    
-    // Start the server
-    require('./railway/notification-service/src/server.js');
+    // Start the server with absolute path
+    require(serverPath);
 } else {
     console.error('❌ Server file not found!');
     console.error('Expected at:', serverPath);
