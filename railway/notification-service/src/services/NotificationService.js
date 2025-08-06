@@ -5,10 +5,19 @@ class NotificationService {
   constructor() {
     this.retellApiKey = process.env.RETELL_API_KEY;
     this.resendApiKey = process.env.RESEND_API_KEY;
-    this.supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    
+    // Only create Supabase client if valid configuration exists
+    if (process.env.SUPABASE_URL && 
+        process.env.SUPABASE_SERVICE_ROLE_KEY && 
+        !process.env.SUPABASE_URL.includes('placeholder')) {
+      this.supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+    } else {
+      this.supabase = null;
+      console.warn('⚠️  NotificationService: Supabase not configured, using fallback');
+    }
     
     // German voice for Auto-Alert calls
     this.defaultVoiceId = '11labs-Carola'; // German female voice

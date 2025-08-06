@@ -46,15 +46,17 @@ class EnvironmentConfig {
       console.error('Please check your environment configuration.');
       
       // In production, Railway should have these set
-      if (process.env.NODE_ENV === 'production') {
-        console.error('💥 Production environment requires all variables!');
+      if (process.env.NODE_ENV === 'production' && !process.env.RAILWAY_ENVIRONMENT) {
+        console.error('💥 Production environment requires database configuration!');
+        console.error('Set DATABASE_URL or POSTGRES_URL for PostgreSQL');
+        console.error('OR set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY for Supabase');
         process.exit(1);
       } else {
         console.warn('⚠️  Development mode - using fallback values');
         // Set fallback values for development
         if (!process.env.SUPABASE_URL) process.env.SUPABASE_URL = 'https://placeholder.supabase.co';
         if (!process.env.SUPABASE_SERVICE_ROLE_KEY) process.env.SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTYwMzk2ODgzNCwiZXhwIjoxOTY5NTQ0ODM0fQ.placeholder';
-        if (!process.env.WEBHOOK_SECRET) process.env.WEBHOOK_SECRET = 'development-webhook-secret-placeholder';
+        if (!process.env.WEBHOOK_SECRET) process.env.WEBHOOK_SECRET = 'development-webhook-secret-placeholder-32chars';
       }
     }
 
@@ -104,9 +106,13 @@ class EnvironmentConfig {
       }
       
       if (!value || !validation.pattern.test(value)) {
-        console.error(`❌ Invalid format for ${key}: ${validation.message}`);
-        if (!validation.optional) {
-          process.exit(1);
+        if (process.env.NODE_ENV === 'production' && process.env.RAILWAY_ENVIRONMENT) {
+          console.error(`❌ Invalid format for ${key}: ${validation.message}`);
+          if (!validation.optional) {
+            process.exit(1);
+          }
+        } else {
+          console.warn(`⚠️  Invalid format for ${key}: ${validation.message} (ignored in development)`);
         }
       }
     }

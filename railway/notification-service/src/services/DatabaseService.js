@@ -41,9 +41,12 @@ class DatabaseService {
       console.log('✅ Supabase connection initialized');
     }
     else {
-      console.error('❌ No database connection available');
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error('Database connection required');
+      console.warn('⚠️  No database connection available');
+      console.log('📝 Running without database (development mode)');
+      
+      // Only fail in Railway production
+      if (process.env.NODE_ENV === 'production' && process.env.RAILWAY_ENVIRONMENT) {
+        throw new Error('Database connection required in Railway production');
       }
     }
   }
@@ -84,7 +87,8 @@ class DatabaseService {
       else {
         return {
           status: 'not_configured',
-          type: 'none'
+          type: 'none',
+          message: 'No database configured (development mode)'
         };
       }
     } catch (error) {
