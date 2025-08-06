@@ -14,7 +14,7 @@
     "test:performance": "jest tests/performance",
     "test:ci": "jest --coverage --ci --watchAll=false",
     "dev": "nodemon railway/notification-service/src/server.js",
-    "start": "node start-server.js",
+    "start": "node server.js",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix"
   },

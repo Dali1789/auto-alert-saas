@@ -29,7 +29,18 @@ class EnvironmentConfig {
     if (missing.length > 0) {
       console.error('❌ Missing required environment variables:', missing);
       console.error('Please check your environment configuration.');
-      process.exit(1);
+      
+      // In production, Railway should have these set
+      if (process.env.NODE_ENV === 'production') {
+        console.error('💥 Production environment requires all variables!');
+        process.exit(1);
+      } else {
+        console.warn('⚠️  Development mode - using fallback values');
+        // Set fallback values for development
+        if (!process.env.SUPABASE_URL) process.env.SUPABASE_URL = 'https://placeholder.supabase.co';
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) process.env.SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTYwMzk2ODgzNCwiZXhwIjoxOTY5NTQ0ODM0fQ.placeholder';
+        if (!process.env.WEBHOOK_SECRET) process.env.WEBHOOK_SECRET = 'development-webhook-secret-placeholder';
+      }
     }
 
     // Check recommended variables
