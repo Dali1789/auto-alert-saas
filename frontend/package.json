@@ -1,0 +1,77 @@
+{
+  "name": "auto-alert-saas-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Auto Alert SaaS Frontend - Next.js Application",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "export": "next export",
+    "analyze": "cross-env ANALYZE=true next build",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/react-query": "^5.14.2",
+    "@tanstack/react-query-devtools": "^5.84.2",
+    "clsx": "^2.0.0",
+    "critters": "^0.0.23",
+    "framer-motion": "^10.16.16",
+    "js-cookie": "^3.0.5",
+    "next": "14.0.4",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-hook-form": "^7.48.2",
+    "react-hot-toast": "^2.4.1",
+    "socket.io-client": "^4.7.4",
+    "tailwind-merge": "^2.2.0",
+    "uuid": "^9.0.1",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^14.0.4",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "20.10.5",
+    "@types/react": "18.2.45",
+    "@types/react-dom": "18.2.18",
+    "@types/uuid": "^9.0.7",
+    "autoprefixer": "10.4.16",
+    "cross-env": "^7.0.3",
+    "eslint": "8.56.0",
+    "eslint-config-next": "14.0.4",
+    "jest": "^29.7.0",
+    "postcss": "8.4.32",
+    "tailwindcss": "3.3.6",
+    "typescript": "5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "auto",
+    "alert",
+    "saas",
+    "mobile.de",
+    "car",
+    "notifications",
+    "next.js",
+    "react"
+  ],
+  "author": "Auto Alert SaaS",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/auto-alert-saas.git"
+  }
+}

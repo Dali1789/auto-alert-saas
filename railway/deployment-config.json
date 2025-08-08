@@ -1,0 +1,50 @@
+{
+  "name": "auto-alert-notification-service",
+  "description": "Auto Alert SaaS - Complete Notification Service with APIs",
+  "version": "2.1.0",
+  "framework": "nodejs",
+  "buildCommand": "npm install --production && npm run build:production",
+  "startCommand": "node server.js",
+  "healthCheckPath": "/health",
+  "port": "$PORT",
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "$PORT"
+  },
+  "requiredEnvironmentVariables": [
+    "DATABASE_URL",
+    "JWT_SECRET",
+    "WEBHOOK_SECRET",
+    "RESEND_API_KEY",
+    "RETELL_API_KEY"
+  ],
+  "optionalEnvironmentVariables": [
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "REDIS_URL",
+    "FRONTEND_URL",
+    "RATE_LIMIT_MAX",
+    "RATE_LIMIT_WINDOW"
+  ],
+  "services": {
+    "database": {
+      "type": "postgresql",
+      "required": true,
+      "alternatives": ["supabase"]
+    },
+    "cache": {
+      "type": "redis",
+      "required": false
+    }
+  },
+  "regions": ["europe-west4"],
+  "scaling": {
+    "minInstances": 1,
+    "maxInstances": 5,
+    "targetCPU": 70
+  },
+  "resources": {
+    "memory": "1GB",
+    "cpu": "1vCPU"
+  }
+}

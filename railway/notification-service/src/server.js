@@ -9,9 +9,24 @@ const { securityHeaders, additionalSecurity, csrfProtection } = require('./middl
 const { globalLimiter, webhookLimiter, notificationLimiter, healthLimiter } = require('./middleware/rateLimiting');
 
 // Import routes
+const { router: authRoutes } = require('./routes/auth');
+const alertRoutes = require('./routes/alerts');
+const { router: subscriptionRoutes, checkSubscriptionLimits } = require('./routes/subscriptions');
+const { router: realtimeRoutes } = require('./routes/realtime');
 const notificationRoutes = require('./routes/notifications');
 const webhookRoutes = require('./routes/webhooks');
 const healthRoutes = require('./routes/health');
+
+// Import Mobile.de scraper routes
+const searchRoutes = require('../../../src/routes/search');
+const { 
+  createScraperRateLimit,
+  validateSearchParams,
+  monitorScraperUsage,
+  checkRobotsCompliance,
+  antibotProtection,
+  addSecurityHeaders
+} = require('../../../src/middleware/scraper-security');
 
 const app = express();
 const appConfig = config.getConfig();
@@ -48,8 +63,23 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes with specific rate limiting
 app.use('/health', healthLimiter, healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/alerts', checkSubscriptionLimits, alertRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/realtime', realtimeRoutes);
 app.use('/api/notifications', notificationLimiter, notificationRoutes);
 app.use('/api/webhooks', webhookLimiter, webhookRoutes);
+
+// Mobile.de scraper routes with security
+app.use('/api/search', 
+  createScraperRateLimit(),
+  addSecurityHeaders,
+  antibotProtection,
+  checkRobotsCompliance,
+  validateSearchParams,
+  monitorScraperUsage,
+  searchRoutes
+);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -59,14 +89,21 @@ app.get('/', (req, res) => {
     status: 'running',
     endpoints: {
       health: '/health',
+      auth: '/api/auth',
+      alerts: '/api/alerts',
+      subscriptions: '/api/subscriptions',
       notifications: '/api/notifications',
-      webhooks: '/api/webhooks'
+      webhooks: '/api/webhooks',
+      search: '/api/search'
     },
     features: [
       'Voice calls via Retell AI',
       'Email notifications via Resend',
       'SMS alerts',
-      'Webhook processing'
+      'Webhook processing',
+      'Mobile.de vehicle scraping',
+      'Real-time search alerts',
+      'Background monitoring jobs'
     ]
   });
 });

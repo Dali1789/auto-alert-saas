@@ -152,6 +152,10 @@ class EnvironmentConfig {
           apiKey: process.env.RESEND_API_KEY
         }
       },
+      auth: {
+        jwtSecret: process.env.JWT_SECRET || 'development-jwt-secret-key-change-in-production',
+        jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d'
+      },
       security: {
         webhookSecret: process.env.WEBHOOK_SECRET,
         testApiKey: testApiKey,
@@ -179,6 +183,7 @@ class EnvironmentConfig {
     console.log(`   Voice Calls: ${this.config.features.enableVoiceCalls ? '✅ Enabled' : '❌ Disabled'}`);
     console.log(`   Email: ${this.config.features.enableEmails ? '✅ Enabled' : '❌ Disabled'}`);
     console.log(`   Test Endpoints: ${this.config.features.enableTestEndpoints ? '✅ Enabled' : '❌ Disabled'}`);
+    console.log(`   JWT Secret: ${this.config.auth.jwtSecret.length > 20 ? '✅ Configured' : '❌ Default (change in production)'}`);
   }
 
   getConfig() {
