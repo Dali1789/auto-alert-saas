@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 
 /**
- * Simple Railway Server Starter
- * Direct import without path manipulation
+ * Railway Server Starter with Fallback
  */
 
 console.log('🚂 Starting Auto-Alert Notification Service...');
 
 try {
-    // Directly require the server file
+    // Try to start the main service
     require('./railway/notification-service/src/server.js');
 } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
-    console.error('Stack:', error.stack);
-    process.exit(1);
+    console.error('❌ Main server failed:', error.message);
+    console.log('🔄 Starting simple health server as fallback...');
+    
+    try {
+        require('./simple-server.js');
+    } catch (fallbackError) {
+        console.error('❌ Fallback server also failed:', fallbackError.message);
+        process.exit(1);
+    }
 }
-// Deployment trigger: 2025-08-08T08:17:47.571Z
