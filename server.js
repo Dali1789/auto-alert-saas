@@ -15,3 +15,4 @@ try {
     console.error('Stack:', error.stack);
     process.exit(1);
 }
+// Deployment trigger: 2025-08-08T08:17:47.571Z
