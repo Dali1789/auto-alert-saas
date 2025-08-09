@@ -32,6 +32,9 @@ const app = express();
 const appConfig = config.getConfig();
 const PORT = appConfig.server.port;
 
+// Trust Railway proxy (IMPORTANT for Railway deployment!)
+app.set('trust proxy', true);
+
 // Security middleware (order matters!)
 app.use(securityHeaders);
 app.use(additionalSecurity);
