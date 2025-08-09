@@ -18,8 +18,18 @@ console.log('✅ Port:', PORT);
 // Trust Railway proxy - THIS FIXES THE RATE LIMITING ERROR
 app.set('trust proxy', true);
 
-// Enable CORS
-app.use(cors());
+// Enable CORS with specific origins
+app.use(cors({
+  origin: [
+    'https://auto-alert.vercel.app',
+    'https://auto-alert-frontend.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
+}));
 app.use(express.json());
 
 // Health endpoint
@@ -67,12 +77,33 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Mobile.de Search Route
+app.post('/api/search/mobile-de', express.json(), async (req, res) => {
+  try {
+    // Mock response for now - real scraper can be added later
+    const { make, model, priceFrom, priceTo, yearFrom, yearTo } = req.body;
+    
+    res.json({
+      success: true,
+      search_params: { make, model, priceFrom, priceTo, yearFrom, yearTo },
+      results: [],
+      total: 0,
+      message: 'Mobile.de scraper endpoint ready - implementation pending'
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Scraper error',
+      message: error.message
+    });
+  }
+});
+
 // Catch all 404
 app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
     requested: req.originalUrl,
-    available: ['/', '/health', '/api/status']
+    available: ['/', '/health', '/api/status', '/api/search/mobile-de']
   });
 });
 
