@@ -37,7 +37,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     service: 'Auto-Alert SaaS (Simple Mode)',
-    version: '2.1.0',
+    version: '2.2.0',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
