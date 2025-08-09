@@ -13,6 +13,9 @@ const rateLimit = require('express-rate-limit');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust Railway proxy (IMPORTANT for Railway deployment!)
+app.set('trust proxy', true);
+
 // Environment validation
 console.log('🔍 Production Server Starting...');
 console.log('Environment Check:');
